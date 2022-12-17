@@ -1,8 +1,11 @@
 import requests
 import json
 import time
-from api_secrets import API_KEY_ASSEMBLYAI
+from api_secrets import API_KEY_ASSEMBLYAI, API_KEY_LISTENNOTES
 import pprint
+import nltk
+nltk.download('punkt')
+import nltk.data
 
 
 transcript_endpoint = 'https://api.assemblyai.com/v2/transcript'
@@ -10,6 +13,25 @@ headers_assemblyai = {
     "authorization": API_KEY_ASSEMBLYAI,
     "content-type": "application/json"
 }
+
+# listennotes_episode_endpoint = 'https://listen-api.listennotes.com/api/v2/episodes'
+# headers_listennotes = {
+#   'X-ListenAPI-Key': API_KEY_LISTENNOTES,
+# }
+
+
+# def get_episode_audio_url(episode_id):
+#     url = listennotes_episode_endpoint + '/' + episode_id
+#     response = requests.request('GET', url, headers=headers_listennotes)
+
+#     data = response.json()
+#     # pprint.pprint(data)
+
+#     episode_title = data['title']
+#     thumbnail = data['thumbnail']
+#     podcast_title = data['podcast']['title']
+#     audio_url = data['audio']
+#     return audio_url, thumbnail, podcast_title, episode_title
 
 def transcribe(audio_url, auto_chapters, speaker_labels):
     transcript_request = {
@@ -39,43 +61,75 @@ def get_transcription_result_url(url, auto_chapters, speaker_labels):
         elif data['status'] == 'error':
             return data, data['error']
 
-        print("waiting for 40 seconds")
-        time.sleep(40)
+        print("waiting for 60 seconds")
+        time.sleep(60)
             
 
 def save_transcript(audio_url):
+    #audio_url, thumbnail, podcast_title, episode_title = get_episode_audio_url(episode_id)
     episode_id = audio_url.split('/')[-1]
+
     data, error = get_transcription_result_url(audio_url, auto_chapters=True, speaker_labels=True)
     if data:
-        filename = episode_id + '.json'
+        filename = episode_id + '.txt'
         with open(filename, 'w') as f:
+            f.write(data['text'])
+        
+        filename = episode_id + 'convo.txt'
+        with open(filename, 'w') as f:
+            convo = data['utterances']
+            for sp in convo:
+                f.write("Speaker " + sp['speaker']+": ")
+                f.write(sp['text']+'\n\n')
+
+        filename = episode_id + '_chapters.json'
+        with open(filename, 'w') as f:
+            chapters = data['chapters']
+
+            data = {'chapters': chapters}
+            # data['audio_url']=audio_url
+            # data['thumbnail']=thumbnail
+            # data['podcast_title']=podcast_title
+            # data['episode_title']=episode_title
+            # # for key, value in kwargs.items():
+            # #     data[key] = value
+
             json.dump(data, f, indent=4)
-        return True
+            print('Transcript saved')
+            return True
     elif error:
-        print("Error: ",error)
+        print("Error!!!", error)
         return False
 
-def get_clean_time(start_ms):
-    seconds = int((start_ms / 1000) % 60)
-    minutes = int((start_ms / (1000 * 60)) % 60)
-    hours = int((start_ms / (1000 * 60 * 60)) % 24)
-    if hours > 0:
-        start_t = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
-    else:
-        start_t = f'{minutes:02d}:{seconds:02d}'
-        
-    return start_t
+
+def chuncks(data_1,chunck_size=500,chunck_limit=200):
+  tokens=[]
+  tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+  s=""
+  for i in tokenizer.tokenize(data_1):
+    tokens.append(i)
+  k=0
+  stamp=0
+  paras=[]
+  while(stamp<len(tokens)):
+    # stamp=0
+    length=0
+    text=""
+    k+=1
+    while(length<chunck_size and stamp<len(tokens)):
+      length+=len(tokens[stamp].split(" "))
+      text+=tokens[stamp]
+      stamp+=1
+    if length>chunck_limit:
+      paras.append(text)
+    else: paras[len(paras)-1]+=text
+    s+="This is the length of chunck -"+str(k)+" Chunck size :"+str(len(text.split(" ")))+"\n\n"
+    s+="Text : "+text+"\n\n"
+  for i in paras:
+    print(len(i.split(" ")))
+  
+  print(s)
+  return (paras,s)
 
 
-def read_file(total_data, chunk_size=5242880):
-    while True:
-        data = total_data.read(chunk_size)
-        if not data:
-            break
-        yield data
-
-def upload_file(file):
-    headers = {'authorization': API_KEY_ASSEMBLYAI}
-    response = requests.post('https://api.assemblyai.com/v2/upload',headers=headers, data=read_file(file))
-    return response.json()['upload_url']
-
+# tokens
