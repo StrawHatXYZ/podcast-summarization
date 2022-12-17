@@ -6,6 +6,7 @@
 ![image](https://user-images.githubusercontent.com/61205382/208237004-8f8c947a-c943-47f2-8d29-0062b3a3125d.png)
 
 ### Deployed Streamlit Application : [Streamlit Application Demo](https://captain272-podcast-chuncks-main-8hqejs.streamlit.app/)
+### IPython Notebook : [Experiment Notebook](https://colab.research.google.com/drive/13sTX3OKS7MEye6S1zdjlbLuZ-49BRu04?usp=sharing)
 
 
 ## This inlcudes.
